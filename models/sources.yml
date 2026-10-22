@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: "Raw CSV data loaded into PostgreSQL by Airflow."
+    schema: bronze
+
+    tables:
+      - name: airbnb_listings
+        description: "Airbnb listings for the currently loaded month."
+
+      - name: census_g01
+        description: "2016 Census population characteristics by LGA."
+
+      - name: census_g02
+        description: "2016 Census medians and averages by LGA."
+
+      - name: lga_code
+        description: "Mapping between LGA codes and names."
+
+      - name: lga_suburb
+        description: "Mapping between suburbs and LGAs."
