@@ -6,8 +6,7 @@
     )
 }}
 
--- Store one fact row per listing and reporting month.
--- Read measures directly from Silver, independently of snapshots.
+-- Store one fact row per listing and source reporting month.
 WITH monthly_listings AS (
     SELECT *
     FROM {{ ref('silver_airbnb_listings') }}
@@ -46,26 +45,27 @@ SELECT
 
 FROM monthly_listings AS listings
 
--- Match the listing version valid on the observation date.
+-- Match the listing version valid for the source reporting month.
 LEFT JOIN {{ ref('dim_listing') }} AS listing_dim
     ON listings.listing_id = listing_dim.listing_id
-    AND listings.scraped_date >= listing_dim.valid_from
+    AND listings.snapshot_updated_at >= listing_dim.valid_from
     AND (
-        listings.scraped_date < listing_dim.valid_to
+        listings.snapshot_updated_at < listing_dim.valid_to
         OR listing_dim.valid_to IS NULL
     )
 
--- Match the host version valid on the observation date.
+-- Match the host version valid for the source reporting month.
 LEFT JOIN {{ ref('dim_host') }} AS hosts
     ON listings.host_id = hosts.host_id
-    AND listings.scraped_date >= hosts.valid_from
+    AND listings.snapshot_updated_at >= hosts.valid_from
     AND (
-        listings.scraped_date < hosts.valid_to
+        listings.snapshot_updated_at < hosts.valid_to
         OR hosts.valid_to IS NULL
     )
 
 LEFT JOIN {{ ref('dim_lga') }} AS lga
     ON listings.listing_neighbourhood = lga.lga_name
 
+-- Preserve the original observation date separately.
 LEFT JOIN {{ ref('dim_date') }} AS dates
     ON listings.scraped_date = dates.full_date

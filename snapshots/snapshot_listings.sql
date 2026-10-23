@@ -2,14 +2,15 @@
 
 {{
     config(
-        target_schema='silver_snapshots',
+        target_schema='silver_snapshots_v2',
         unique_key='listing_id',
         strategy='timestamp',
-        updated_at='scraped_date'
+        updated_at='snapshot_updated_at'
     )
 }}
 
--- Preserve listing dimension attributes using the source observation date.
+-- Preserve listing versions using the source reporting month.
+-- Retain the original scrape date for traceability.
 SELECT
     listing_id,
     host_id,
@@ -17,7 +18,8 @@ SELECT
     property_type,
     room_type,
     accommodates,
-    scraped_date
+    scraped_date,
+    snapshot_updated_at
 FROM {{ ref('silver_listings') }}
 
 {% endsnapshot %}

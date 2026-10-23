@@ -20,3 +20,6 @@ sources:
 
       - name: lga_suburb
         description: "Mapping between suburbs and LGAs."
+
+      - name: load_metadata
+        description: "Current source filename and reporting month recorded by Airflow."
