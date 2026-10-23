@@ -1,4 +1,3 @@
--- Verify retained monthly facts after loading June.
 SELECT
     months.full_date AS reporting_month,
     COUNT(*) AS total_rows,
