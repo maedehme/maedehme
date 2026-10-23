@@ -1,20 +1,36 @@
--- Build monthly listing facts from the preserved snapshot versions.
-WITH listing_history AS (
+{{
+    config(
+        materialized='incremental',
+        unique_key='listing_month_key',
+        incremental_strategy='delete+insert'
+    )
+}}
+
+-- Store one fact row per listing and reporting month.
+-- Read measures directly from Silver, independently of snapshots.
+WITH monthly_listings AS (
     SELECT *
-    FROM {{ ref('snapshot_listings') }}
+    FROM {{ ref('silver_airbnb_listings') }}
 )
 
 SELECT
-    listings.dbt_scd_id AS listing_month_key,
+    MD5(
+        listings.listing_id::TEXT
+        || '|'
+        || TO_CHAR(listings.reporting_month, 'YYYY-MM')
+    ) AS listing_month_key,
+
     listing_dim.listing_key,
     hosts.host_key,
     lga.lga_key,
     dates.date_key,
 
+    TO_CHAR(
+        listings.reporting_month, 'YYYYMMDD'
+    )::INTEGER AS reporting_month_key,
+
     listings.listing_id,
     listings.host_id,
-    listings.reporting_month,
-    listings.scraped_date,
     listings.price,
     listings.has_availability,
     listings.availability_30,
@@ -28,16 +44,25 @@ SELECT
     listings.review_scores_communication,
     listings.review_scores_value
 
-FROM listing_history AS listings
+FROM monthly_listings AS listings
 
+-- Match the listing version valid on the observation date.
 LEFT JOIN {{ ref('dim_listing') }} AS listing_dim
-    ON listings.dbt_scd_id = listing_dim.listing_key
+    ON listings.listing_id = listing_dim.listing_id
+    AND listings.scraped_date >= listing_dim.valid_from
+    AND (
+        listings.scraped_date < listing_dim.valid_to
+        OR listing_dim.valid_to IS NULL
+    )
 
--- Match the host version observed in the same reporting month.
+-- Match the host version valid on the observation date.
 LEFT JOIN {{ ref('dim_host') }} AS hosts
     ON listings.host_id = hosts.host_id
-    AND listings.reporting_month =
-        DATE_TRUNC('month', hosts.valid_from)::DATE
+    AND listings.scraped_date >= hosts.valid_from
+    AND (
+        listings.scraped_date < hosts.valid_to
+        OR hosts.valid_to IS NULL
+    )
 
 LEFT JOIN {{ ref('dim_lga') }} AS lga
     ON listings.listing_neighbourhood = lga.lga_name
